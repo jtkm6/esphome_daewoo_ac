@@ -1,0 +1,40 @@
+# CLion specific files
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries/
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/*.iml
+.idea/modules.xml
+.idea/misc.xml
+.idea/codeStyles/
+.idea/inspectionProfiles/
+.idea/shelf/
+
+# Build artifacts
+cmake-build-*/
+*.o
+*.so
+*.a
+*.dll
+*.exe
+*.obj
+*.lib
+*.pdb
+*.ilk
+*.suo
+*.user
+*.ncb
+*.aps
+*.bsc
+*.sbr
+*.res
+*.pch
+*.idb
+*.opt
+*.ipch
+
+# Other generated files
+*.log
+*.swp
+*.bak

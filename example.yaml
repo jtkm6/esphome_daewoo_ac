@@ -1,0 +1,87 @@
+esphome:
+  name: daewoo-ac-demo
+  friendly_name: Daewoo AC Demo
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  password: ""
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot in case wifi connection fails
+  ap:
+    ssid: "Daewoo-AC-Demo"
+    password: "12345678"
+
+captive_portal:
+
+# Configure UART for communication with Daewoo AC
+uart:
+  id: uart_bus
+  tx_pin: GPIO17  # Change to your TX pin
+  rx_pin: GPIO16  # Change to your RX pin
+  baud_rate: 9600  # Change to your baud rate
+
+# Import the external component
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [daewoo_ac]
+
+# Configure the Daewoo AC climate platform
+climate:
+  - platform: daewoo_ac
+    id: daewoo_ac_unit
+    name: "Daewoo AC"
+    # Optional: Set the update interval for temperature simulation (default: 5s)
+    # This controls how often the mock temperature is updated in demo mode
+    update_interval: 3s  # Can use time units: ms, s, min, h
+    # Required: Configure UART for AC communication
+    uart_id: uart_bus
+    # Note: Swing mode is automatically populated based on vane positions
+    # - Both vanes on "Swing" = SWING_BOTH
+    # - Only vertical on "Swing" = SWING_VERTICAL
+    # - Only horizontal on "Swing" = SWING_HORIZONTAL
+    # - Neither on "Swing" = SWING_OFF
+
+# Configure vane position selectors
+select:
+  - platform: daewoo_ac
+    daewoo_ac_id: daewoo_ac_unit
+    vertical_vane:
+      name: "Vertical Vane Position"
+      # Optional: Customize the option names (must provide exactly 7)
+      # If not specified, defaults to: ["Swing", "Static", "Up", "Medium", "Down", "Up & Medium", "Medium & Down"]
+      # options:
+      #   - "Auto"
+      #   - "Fixed"
+      #   - "Top"
+      #   - "Center"
+      #   - "Bottom"
+      #   - "Top & Center"
+      #   - "Center & Bottom"
+
+switch:
+  - platform: daewoo_ac
+    daewoo_ac_id: daewoo_ac_unit
+    display:
+      name: "Daewoo AC Display"
+    uv_light:
+      name: "Daewoo AC UV Light"
+    horizontal_swing:
+      name: "Daewoo AC Horizontal Swing"
