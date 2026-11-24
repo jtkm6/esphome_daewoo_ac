@@ -18,6 +18,19 @@ static constexpr uint8_t DISPLAY_FLAG_MASK = 0x10;
 static constexpr uint8_t UV_LIGHT_FLAG_MASK = 0x02;
 static constexpr uint8_t HORIZONTAL_SWING_FLAG_MASK = 0x02;
 
+// Fields identified by probing (see PROTOCOL.md). Not used by the component yet;
+// they are preserved as-is because write frames start from the last received state.
+// The AC only accepts writes to ext_flags while it is running (rejected when off).
+static constexpr uint8_t EXT_FIELD_MASK = 0x1C;   // ext_flags bits 2-4: 3-bit value 0-7, purpose unknown
+static constexpr uint8_t EXT_FIELD_SHIFT = 2;
+static constexpr uint8_t EXT_FLAG_MASK = 0x40;    // ext_flags bit 6: purpose unknown
+static constexpr uint8_t FLAGS0_UNKNOWN_MASK = 0x01;  // stored by the AC, no visible effect
+static constexpr uint8_t FLAGS1_UNKNOWN_MASK = 0x04;  // stored by the AC, no visible effect
+static constexpr uint8_t TIMER_MODE_MASK = 0x03;  // timer_mode: only the low 2 bits are stored
+static constexpr uint8_t TIMER_MODE_NONE = 0x00;
+static constexpr uint8_t TIMER_MODE_ON = 0x01;    // assumed by analogy, not captured from the remote
+static constexpr uint8_t TIMER_MODE_OFF = 0x02;   // off-timer, confirmed with the IR remote
+
 static constexpr uint8_t MIN_TARGET_TEMPERATURE = 16;
 static constexpr uint8_t MAX_TARGET_TEMPERATURE = 32;
 
@@ -77,20 +90,26 @@ class DaewooAC : public climate::Climate, public Component {
   std::string value;
 };
 
+// Payload of a 22-byte frame (after the 0xAA 0x14 header). Byte offsets in
+// comments are payload indexes; see PROTOCOL.md for the full byte map.
 struct DaewooState {
-  uint8_t operation;           // 0x01 for read operation, 0x02 for write operation
-  uint8_t power_state;         // done
-  uint8_t reserved0;
-  uint8_t vertical_vane;       // done
-  uint8_t flags0;
-  uint8_t mode;                // done
-  uint8_t flags1;              // bits 1, 2, 5 - done
-  uint8_t fan_mode;            // done
-  uint8_t target_temperature;  // done
-  uint8_t current_temperature; // done
-  uint8_t reserved1[9];
-  uint8_t checksum;            // done
+  uint8_t operation;           // [0]  0x01 status/read, 0x02 write (the AC answers writes with an op 0x02 ack)
+  uint8_t power_state;         // [1]  0x00 off, 0x01 on
+  uint8_t ext_flags;           // [2]  EXT_FIELD_MASK (3-bit value) + EXT_FLAG_MASK; only writable while running
+  uint8_t vertical_vane;       // [3]  0x00 swing, 0x01 down ... 0x05 up, 0x06 static
+  uint8_t flags0;              // [4]  0x02 horizontal swing; 0x01 unknown (stored); 0x04/0x10 observed always set
+  uint8_t mode;                // [5]  0 auto, 1 cool, 2 dry, 3 heat, 4 fan only
+  uint8_t flags1;              // [6]  0x01 quiet, 0x02 UV light, 0x10 display; 0x04 unknown (stored)
+  uint8_t fan_mode;            // [7]  0 auto, 1 low, 2 medium, 3 high
+  uint8_t target_temperature;  // [8]  degrees C (16-32)
+  uint8_t current_temperature; // [9]  degrees C, read only
+  uint8_t timer_mode;          // [10] TIMER_MODE_* (2 bits); display shows the clock icon when non-zero
+  uint8_t timer_hours;         // [11] 1-23, 0 = 24 h; ignored unless timer_mode is set
+  uint8_t timer_counter;       // [12] changes about once a minute while a timer runs; meaning unknown, read only
+  uint8_t reserved[6];         // [13-18] ignored by the AC on write, always 0x00
+  uint8_t checksum;            // [19] sum of all frame bytes before it, modulo 256
 };
+static_assert(sizeof(DaewooState) == MESSAGE_LENGTH - 2, "DaewooState must match the 20-byte frame payload");
 
   // Build a Daewoo UART command frame representing the desired state.
   // The frame is based on the last known Daewoo state (`daewoo_state_`)
